@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Finances</title>
+</head>
+<body>
+    <button data-href="/admin" onclick="window.open(this.dataset.href, 'my-new-popup', 'width=1000,height=800,toolbar=no,scrollbars=yes,resizable=yes'); return false;">
+        open admin
+    </button>
+    <h1>Investments</h1>
+    <ul>
+        {% for investment in investments %}
+            <li>
+                <strong>{{ investment.name }}:</strong> Initial Amount: ${{ investment.amount }} - 
+                {{ investment.percentage }}% annual interest &nbsp;&nbsp;&nbsp; ${{ investment.monthly_contribution }} monthly contribution 
+                <strong>&nbsp;&nbsp;&nbsp;Projected Revenue: ${{ investment.projected_revenue }}</strong>
+            </li>
+        {% endfor %}
+    </ul>
+    <h2>Total Revenue: ${{ total_revenue }}</h2>
+
+    <h1>Expenses</h1>
+    <ul>
+        {% for expense in expenses %}
+            <li>
+                <strong>{{ expense.name }}:</strong> Per year: ${{ expense.amount }} <strong>&nbsp;&nbsp;&nbsp;Total: ${{ expense.projected_loss }}</strong>
+            </li>
+        {% endfor %}
+    </ul>
+    <h2>Total Loss: ${{ total_loss }}</h2>
+
+    <h1>Total Profit</h1>
+    <h2>${{ total_profit }}</h2>
+</body>
+</html>
