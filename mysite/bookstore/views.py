@@ -3,8 +3,10 @@ from .models import Book
 from django.http import JsonResponse
 
 def library(request):
-
-    list_book = list(Book.objects.all().values('id', 'name', 'author'))
-    return JsonResponse(list_book, safe=False)
+    author_filter = request.GET.get('author')
+    list_book = Book.objects.all().values('id', 'name', 'author')
+    if author_filter:
+        list_book = list_book.filter(author__icontains=author_filter)
+    return JsonResponse(list(list_book), safe=False)
 
     
