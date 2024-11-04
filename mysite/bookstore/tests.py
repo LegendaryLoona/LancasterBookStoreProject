@@ -8,7 +8,6 @@ class Main_test(TestCase):
     # models.Book.objects.create(name="cat", author="meow")
 
     def setUp(self):
-        # Create test data
         models.Book.objects.create(name="Sample Book 1", author="Jalal")
         models.Book.objects.create(name="Sample Book 2", author="Jalal")
         models.Book.objects.create(name="Sample Book 3", author="Another Author")
