@@ -1,3 +1,1 @@
-Book Store Application
-Project Overview
-This repository contains a Django-based web application designed as a project for Lancaster University. The application simulates a digital bookstore, allowing users to manage books and authors, view the full library, and filter by various criteria.
+![alt text]([http://url/to/img.png](https://github.com/LegendaryLoona/LancasterPMP/blob/main/Sequence%20Diagram.drawio%20(1).png))
