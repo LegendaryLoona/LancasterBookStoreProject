@@ -21,7 +21,7 @@ This repository contains a Django-based web application designed as a project fo
 ## The application also includes several tests:
 - Checking server response
 - Checking if the books are displayed as a list
-- Checking if the filter functions displays the correct books
+- Checking if the filter function displays the correct books
 
 ## Below you can find our UMLs
 
