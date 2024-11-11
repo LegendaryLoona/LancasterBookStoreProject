@@ -35,4 +35,4 @@ This repository contains a Django-based web application designed as a project fo
 
 ### Sequence UML
 
-![](https://github.com/LegendaryLoona/LancasterPMP/blob/main/Sequence%20Diagram.drawio%20.png)
+![](https://github.com/LegendaryLoona/LancasterPMP/blob/main/Sequence%20Diagram.drawio.png)
