@@ -43,7 +43,24 @@ def addbook(request):
         author.save()
         return JsonResponse("Book added successfully", safe=False)
 
- 
+def delete_author(request):
+    author_id = request.GET.get('id')
+    if author_id:
+            try:
+                int(author_id)
+            except ValueError:
+                return JsonResponse( "Invalid author ID.", safe=False)
+            try:
+                author_to_delete = Author.objects.filter(id=author_id)
+
+                if author_to_delete.exists():
+                    author_to_delete.delete()
+                    return JsonResponse( f"Book with ID {author_id} deleted successfully.", safe=False)
+                else:
+                    return JsonResponse("author not found.", safe=False)
+            except :
+                return JsonResponse("error", safe=False)
+                
 def delete_book(request):
         book_id = request.GET.get('id')
         if book_id:
