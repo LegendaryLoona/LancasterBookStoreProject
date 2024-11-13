@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from .models import Book, Author
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 
 def library(request):
     author_filter = request.GET.get('author')
@@ -42,4 +43,39 @@ def addbook(request):
         author.save()
         return JsonResponse("Book added successfully", safe=False)
 
-    
+ 
+def delete_book(request):
+        book_id = request.GET.get('id')
+        if book_id:
+            try:
+                int(book_id)
+            except ValueError:
+                return JsonResponse( "Invalid book ID.", safe=False)
+            try:
+                books_to_delete = Book.objects.filter(id=book_id)
+                if books_to_delete.exists():
+                    book_store= get_object_or_404(Book, id=book_id)
+                    book_info = {
+                                'name': book_store.name, 
+                                'author': book_store.author if hasattr(Book, 'description') else '',
+                                'price': book_store.price if hasattr(Book, 'description') else '',
+                                'edition': book_store.edition if hasattr(Book, 'description') else '',
+                                'description': book_store.description if hasattr(Book, 'description') else '',
+                            }
+                    author1 = Author.objects.filter(author_name=book_store.author)
+                    if author1.exists():
+                        author = get_object_or_404(Author, author_name=book_store.author)
+                        if author.list_of_books.startswith(book_store.name+","):
+                            author.list_of_books = author.list_of_books.replace(book_store.name+",", "")
+                            author.list_of_books= author.list_of_books.lstrip()
+                            author.save()
+                        if ", " +book_store.name+"," in author.list_of_books:
+                            author.list_of_books = author.list_of_books.replace(", " +book_store.name+",", ",") 
+                            author.save()
+                    books_to_delete.delete()
+                    return JsonResponse( f"Book with ID {book_id} deleted successfully.{book_info}", safe=False)
+            
+                else:
+                    return JsonResponse("Book not found.", safe=False)
+            except :
+                return JsonResponse("error", safe=False)   
