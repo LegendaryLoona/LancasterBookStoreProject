@@ -6,4 +6,5 @@ urlpatterns = [
     path('addauthor/', views.addauthor, name='sample_json_view'),
     path('addbook/', views.addbook, name='sample_json_view'),
     path('delete_book/', views.delete_book, name='delete_book'),
+    path('delete_author/', views.delete_author, name='delete_author'),
 ]
