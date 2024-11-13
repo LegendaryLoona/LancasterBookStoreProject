@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from .models import Book, Author
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 
 def library(request):
     author_filter = request.GET.get('author')
@@ -43,3 +44,90 @@ def addbook(request):
         return JsonResponse("Book added successfully", safe=False)
 
     
+def delete_book(request):
+        book_id = request.GET.get('id')
+        if book_id:
+            try:
+                int(book_id)
+            except ValueError:
+                return JsonResponse( "Invalid book ID.", safe=False)
+            books_to_delete = Book.objects.filter(id=book_id)
+            if books_to_delete.exists():
+                book_store= get_object_or_404(Book, id=book_id)
+                book_info = {
+                            'name': book_store.name, 
+                            'author': book_store.author if hasattr(Book, 'description') else '',
+                            'price': book_store.price if hasattr(Book, 'description') else '',
+                            'edition': book_store.edition if hasattr(Book, 'description') else '',
+                            'description': book_store.description if hasattr(Book, 'description') else '',
+                        }
+                author1 = Author.objects.filter(name=book_store.author)
+                if author1.exists():
+                    author = get_object_or_404(Author, name=book_store.author)
+                    if author.list_of_books.startswith(book_store.name+","):
+                        author.list_of_books = author.list_of_books.replace(book_store.name+",", "")
+                        author.list_of_books= author.list_of_books.lstrip()
+                        author.save()
+                    if ", " +book_store.name+"," in author.list_of_books:
+                        author.list_of_books = author.list_of_books.replace(", " +book_store.name+",", ",") 
+                        author.save()
+                books_to_delete.delete()
+                return JsonResponse( f"Book with ID {book_id} deleted successfully.{book_info}", safe=False)
+        
+            else:
+                return JsonResponse("Book not found.", safe=False)
+            
+
+def edit_author(request):
+    current_name = request.GET.get('current_name')
+    new_name = request.GET.get('new_name')
+    
+    if not current_name or not new_name:
+        return JsonResponse("Please provide both the current name and a new name", safe=False)
+    
+    if any(not c.isalnum() and c != " " for c in new_name):
+        return JsonResponse("Please provide a valid name", safe=False)
+    
+    try:
+        author = Author.objects.get(name=current_name)
+    except Author.DoesNotExist:
+        return JsonResponse("Author not found", safe=False)
+    try:
+        existing_author = Author.objects.get (name = new_name)
+        author_books = author.list_of_books.split (" , ")
+        existing_author_books = existing_author.list_of_books.split(" , ")
+
+        merged_books = list(set(author_books + existing_author_books))
+        existing_author.list_of_books = " , ".join(merged_books)
+    except Author.DoesNotExist:
+        pass
+
+    their_books = Book.objects.filter(author=author.name)
+    for book in their_books:
+        book.author = new_name
+        book.save()
+    author.name = new_name
+    author.save()
+    return JsonResponse("Author updated successfully", safe=False)
+
+def show_authors(request):
+    list_author = Author.objects.all().values('id', 'name', 'list_of_books')
+    return JsonResponse(list(list_author), safe=False)
+
+def delete_author(request):
+    author_id = request.GET.get('id')
+    if author_id:
+            try:
+                int(author_id)
+            except ValueError:
+                return JsonResponse( "Invalid author ID.", safe=False)
+            try:
+                author_to_delete = Author.objects.filter(id=author_id)
+
+                if author_to_delete.exists():
+                    author_to_delete.delete()
+                    return JsonResponse( f"Author with ID {author_id} deleted successfully.", safe=False)
+                else:
+                    return JsonResponse("author not found.", safe=False)
+            except :
+                return JsonResponse("error", safe=False)
