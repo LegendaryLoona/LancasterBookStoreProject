@@ -8,7 +8,7 @@ class Main_test(TestCase):
     # models.Book.objects.create(name="cat", author="meow")
 
     def setUp(self):
-        models.Author.objects.create(name="Jalal", list_of_books="Sample Book 1, Sample Book 2")
+        models.Author.objects.create(name="Jalal", list_of_books="Sample Book 1, Sample Book 2,")
         models.Author.objects.create(name="Another Author", list_of_books="Sample Book 3")
         models.Book.objects.create(name="Sample Book 1", author="Jalal", edition = 1, price = 123, description = "new description",)
         models.Book.objects.create(name="Sample Book 2", author="Jalal", edition = 1, price = 123, description = "new description",)
@@ -20,7 +20,7 @@ class Main_test(TestCase):
         response = views.library(request)
         self.assertEqual(response.status_code, 200)
 
-    def test_list(self):
+    def test_book_list(self):
         factory = RequestFactory()
         request = factory.get('/')
         response = views.library(request)
@@ -28,12 +28,19 @@ class Main_test(TestCase):
         # print("New data:   ", response_data)
         self.assertIsInstance(response_data, list)
 
+    def test_author_list(self):
+        factory = RequestFactory()
+        request = factory.get('/')
+        response = views.show_authors(request)
+        response_data = json.loads(response.content)
+        print(response_data)
+        self.assertIsInstance(response_data, list)
+
     def test_filter(self):
         factory = RequestFactory()
         filter_request = factory.get('/?author=Jalal')
         filter_response = views.library(filter_request)
         response_data = json.loads(filter_response.content)
-        print("Jalal books3:   ", response_data)
         for i in response_data:
             self.assertEqual(i['author'], "Jalal")
 
@@ -70,6 +77,7 @@ class Main_test(TestCase):
         filter_response = views.library(factory.get('/'))
         response_data = json.loads(filter_response.content)
         self.assertIn(expected_book, response_data)
+        books = models.Author.objects.get(name='Jalal')
         filter_response = views.delete_book(factory.get('/?id=4'))
         filter_response = views.library(factory.get('/'))
         response_data = json.loads(filter_response.content)
