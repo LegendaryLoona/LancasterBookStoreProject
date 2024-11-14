@@ -77,7 +77,7 @@ def delete_book(request):
             else:
                 return JsonResponse("Book not found.", safe=False)
             
-
+########################################################
 def edit_author(request):
     current_name = request.GET.get('current_name')
     new_name = request.GET.get('new_name')
@@ -131,3 +131,82 @@ def delete_author(request):
                     return JsonResponse("author not found.", safe=False)
             except :
                 return JsonResponse("error", safe=False)
+
+
+
+def edit_author(request):
+    current_name = request.GET.get('current_name')
+    new_name = request.GET.get('new_name')
+    
+    if not current_name or not new_name:
+        return JsonResponse("Please provide both the current name and a new name", safe=False)
+    
+    if any(not c.isalnum() and c != " " for c in new_name):
+        return JsonResponse("Please provide a valid name", safe=False)
+    
+    try:
+        author = Author.objects.get(name=current_name)
+    except Author.DoesNotExist:
+        return JsonResponse("Author not found", safe=False)
+    try:
+        existing_author = Author.objects.get (name = new_name)
+        author_books = author.list_of_books.split (" , ")
+        existing_author_books = existing_author.list_of_books.split(" , ")
+
+        merged_books = list(set(author_books + existing_author_books))
+        existing_author.list_of_books = " , ".join(merged_books)
+    except Author.DoesNotExist:
+        pass
+
+    their_books = Book.objects.filter(author=author.name)
+    for book in their_books:
+        book.author = new_name
+        book.save()
+    author.name = new_name
+    author.save()
+    return JsonResponse("Author updated successfully", safe=False)
+def edit_book(request):
+    book_id = request.GET.get('book_id')
+    new_name = request.GET.get('name')
+    new_author_name = request.GET.get('new_author')
+    new_price = request.GET.get('price')
+    new_edition = request.GET.get('edition')
+    new_description = request.GET.get('description')
+    
+    
+    if not book_id:
+        return JsonResponse("Please provide a book ID", safe=False)
+    try:
+        book = Book.objects.get(id=book_id)
+    except Book.DoesNotExist:
+        return JsonResponse("Book not found", safe=False)
+    old_name = book.name
+    old_author_name = book.author
+    if new_name and new_name != old_name:
+        book.name = new_name 
+        author = Author.objects.get(name=old_author_name)
+        books = [b.strip() for b in author.list_of_books.split(",") if b.strip()]
+        updated_books = [new_name if b == old_name else b for b in books]
+        author.list_of_books = ", ".join(updated_books)
+        author.save()
+    if new_author_name and new_author_name != old_author_name:
+        new_author, created = Author.objects.get_or_create(name=new_author_name)
+        old_author = Author.objects.get(name=old_author_name)
+        old_books = [b.strip() for b in old_author.list_of_books.split(" , ") if b.strip()]
+        old_books = [b for b in old_books if b != old_name]
+        old_author.list_of_books = " , ".join(old_books)
+        old_author.save()
+        new_books = [b.strip() for b in new_author.list_of_books.split(" , ") if b.strip()]
+        if new_name not in new_books:
+            new_books.append(new_name)
+        new_author.list_of_books = " , ".join(new_books)
+        new_author.save()
+        book.author = new_author_name
+    if new_price:
+            book.price = float(new_price)
+    if new_edition:
+        book.edition = new_edition
+    if new_description:
+        book.description = new_description
+    book.save()
+    return JsonResponse("Book updated successfully", safe=False)
