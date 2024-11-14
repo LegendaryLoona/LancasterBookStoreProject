@@ -77,6 +77,31 @@ def delete_book(request):
             else:
                 return JsonResponse("Book not found.", safe=False)
             
+
+
+def show_authors(request):
+    list_author = Author.objects.all().values('id', 'name', 'list_of_books')
+    return JsonResponse(list(list_author), safe=False)
+
+def delete_author(request):
+    author_id = request.GET.get('id')
+    if author_id:
+            try:
+                int(author_id)
+            except ValueError:
+                return JsonResponse( "Invalid author ID.", safe=False)
+            try:
+                author_to_delete = Author.objects.filter(id=author_id)
+
+                if author_to_delete.exists():
+                    author_to_delete.delete()
+                    return JsonResponse( f"Author with ID {author_id} deleted successfully.", safe=False)
+                else:
+                    return JsonResponse("author not found.", safe=False)
+            except :
+                return JsonResponse("error", safe=False)
+
+
 ########################################################
 def edit_author(request):
     current_name = request.GET.get('current_name')
@@ -109,29 +134,6 @@ def edit_author(request):
     author.name = new_name
     author.save()
     return JsonResponse("Author updated successfully", safe=False)
-
-def show_authors(request):
-    list_author = Author.objects.all().values('id', 'name', 'list_of_books')
-    return JsonResponse(list(list_author), safe=False)
-
-def delete_author(request):
-    author_id = request.GET.get('id')
-    if author_id:
-            try:
-                int(author_id)
-            except ValueError:
-                return JsonResponse( "Invalid author ID.", safe=False)
-            try:
-                author_to_delete = Author.objects.filter(id=author_id)
-
-                if author_to_delete.exists():
-                    author_to_delete.delete()
-                    return JsonResponse( f"Author with ID {author_id} deleted successfully.", safe=False)
-                else:
-                    return JsonResponse("author not found.", safe=False)
-            except :
-                return JsonResponse("error", safe=False)
-
 
 def edit_book(request):
     book_id = request.GET.get('book_id')
