@@ -133,38 +133,6 @@ def delete_author(request):
                 return JsonResponse("error", safe=False)
 
 
-
-def edit_author(request):
-    current_name = request.GET.get('current_name')
-    new_name = request.GET.get('new_name')
-    
-    if not current_name or not new_name:
-        return JsonResponse("Please provide both the current name and a new name", safe=False)
-    
-    if any(not c.isalnum() and c != " " for c in new_name):
-        return JsonResponse("Please provide a valid name", safe=False)
-    
-    try:
-        author = Author.objects.get(name=current_name)
-    except Author.DoesNotExist:
-        return JsonResponse("Author not found", safe=False)
-    try:
-        existing_author = Author.objects.get (name = new_name)
-        author_books = author.list_of_books.split (" , ")
-        existing_author_books = existing_author.list_of_books.split(" , ")
-
-        merged_books = list(set(author_books + existing_author_books))
-        existing_author.list_of_books = " , ".join(merged_books)
-    except Author.DoesNotExist:
-        pass
-
-    their_books = Book.objects.filter(author=author.name)
-    for book in their_books:
-        book.author = new_name
-        book.save()
-    author.name = new_name
-    author.save()
-    return JsonResponse("Author updated successfully", safe=False)
 def edit_book(request):
     book_id = request.GET.get('book_id')
     new_name = request.GET.get('name')
