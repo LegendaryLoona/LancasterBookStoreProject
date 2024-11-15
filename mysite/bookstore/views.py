@@ -39,11 +39,11 @@ def addbook(request):
 
     else:
         Book.objects.create(name=book_name, author=author_name, price = book_price, edition=book_edition, description=book_description)
-        author.list_of_books += book_name + ", "
+        author.list_of_books += book_name + ","
         author.save()
         return JsonResponse("Book added successfully", safe=False)
 
-    
+# Might go very wrong up if we are removing the last book
 def delete_book(request):
         book_id = request.GET.get('id')
         if book_id:
@@ -64,13 +64,17 @@ def delete_book(request):
                 author1 = Author.objects.filter(name=book_store.author)
                 if author1.exists():
                     author = get_object_or_404(Author, name=book_store.author)
-                    if author.list_of_books.startswith(book_store.name+","):
-                        author.list_of_books = author.list_of_books.replace(book_store.name+",", "")
-                        author.list_of_books= author.list_of_books.lstrip()
-                        author.save()
-                    if ", " +book_store.name+"," in author.list_of_books:
-                        author.list_of_books = author.list_of_books.replace(", " +book_store.name+",", ",") 
-                        author.save()
+                    # if author.list_of_books.startswith(book_store.name+","):
+                    #     author.list_of_books = author.list_of_books.replace(book_store.name+",", "")
+                    #     author.list_of_books= author.list_of_books.lstrip()
+                    #     author.save()
+                    # if ", " +book_store.name+"," in author.list_of_books:
+                    #     author.list_of_books = author.list_of_books.replace(", " +book_store.name+",", ",") 
+                    #     author.save()
+                    old_books = author.list_of_books[:-1].split(",")
+                    old_books.remove(book_store.name)
+                    author.list_of_books = ",".join(old_books)+","
+                    author.save()
                 books_to_delete.delete()
                 return JsonResponse( f"Book with ID {book_id} deleted successfully.{book_info}", safe=False)
         
@@ -78,6 +82,30 @@ def delete_book(request):
                 return JsonResponse("Book not found.", safe=False)
             
 
+def show_authors(request):
+    list_author = Author.objects.all().values('id', 'name', 'list_of_books')
+    return JsonResponse(list(list_author), safe=False)
+
+def delete_author(request):
+    author_id = request.GET.get('id')
+    if author_id:
+            try:
+                int(author_id)
+            except ValueError:
+                return JsonResponse( "Invalid author ID.", safe=False)
+            try:
+                author_to_delete = Author.objects.filter(id=author_id)
+
+                if author_to_delete.exists():
+                    author_to_delete.delete()
+                    return JsonResponse( f"Author with ID {author_id} deleted successfully.", safe=False)
+                else:
+                    return JsonResponse("author not found.", safe=False)
+            except :
+                return JsonResponse("error", safe=False)
+
+
+########################################################
 def edit_author(request):
     current_name = request.GET.get('current_name')
     new_name = request.GET.get('new_name')
@@ -110,24 +138,51 @@ def edit_author(request):
     author.save()
     return JsonResponse("Author updated successfully", safe=False)
 
-def show_authors(request):
-    list_author = Author.objects.all().values('id', 'name', 'list_of_books')
-    return JsonResponse(list(list_author), safe=False)
 
-def delete_author(request):
-    author_id = request.GET.get('id')
-    if author_id:
-            try:
-                int(author_id)
-            except ValueError:
-                return JsonResponse( "Invalid author ID.", safe=False)
-            try:
-                author_to_delete = Author.objects.filter(id=author_id)
+# Might go very wrong up if we are removing the last book
+def edit_book(request):
+    book_id = request.GET.get('book_id')
+    new_name = request.GET.get('name')
+    new_author_name = request.GET.get('new_author')
+    new_price = request.GET.get('price')
+    new_edition = request.GET.get('edition')
+    new_description = request.GET.get('description')
+    
+    
+    if not book_id:
+        return JsonResponse("Please provide a book ID", safe=False)
+    try:
+        book = Book.objects.get(id=book_id)
+    except Book.DoesNotExist:
+        return JsonResponse("Book not found", safe=False)
+    old_name = book.name
+    old_author_name = book.author
+    if new_name and new_name != old_name:
+        book.name = new_name 
+        author = Author.objects.get(name=old_author_name)
+        books = [b.strip() for b in author.list_of_books.split(",") if b.strip()]
+        updated_books = [new_name if b == old_name else b for b in books]
+        author.list_of_books = ", ".join(updated_books)
+        author.save()
+    else: new_name = book.name
 
-                if author_to_delete.exists():
-                    author_to_delete.delete()
-                    return JsonResponse( f"Author with ID {author_id} deleted successfully.", safe=False)
-                else:
-                    return JsonResponse("author not found.", safe=False)
-            except :
-                return JsonResponse("error", safe=False)
+    if new_author_name and new_author_name != old_author_name:
+        new_author, created = Author.objects.get_or_create(name=new_author_name)
+        old_author = Author.objects.get(name=old_author_name)
+        old_books = old_author.list_of_books[:-1].split(",")
+        # del old_books[-1]
+        old_books.remove(new_name)
+        old_author.list_of_books = ",".join(old_books)+","
+        print(old_author.list_of_books)
+        old_author.save()
+        new_author.list_of_books += new_name+","
+        new_author.save()
+        book.author = new_author_name
+    if new_price:
+            book.price = float(new_price)
+    if new_edition:
+        book.edition = new_edition
+    if new_description:
+        book.description = new_description
+    book.save()
+    return JsonResponse("Book updated successfully", safe=False)
