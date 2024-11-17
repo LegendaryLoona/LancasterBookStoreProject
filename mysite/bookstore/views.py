@@ -215,3 +215,16 @@ def search_books(request):
     if not (exact_books or partial_books):
         return JsonResponse("Nothing found.", safe=False)
     return JsonResponse((exact_books + partial_books), safe=False)
+    
+# from django.db.models import Q
+
+# def Search_book(request):
+#     book_name = request.GET.get('name')
+#     words = book_name.split()
+#     query = Q()
+#     for word in words:
+#         query &= Q(name__icontains=word) 
+#     results = Book.objects.filter(query).values('id', 'name', 'author','price','edition','description')
+#     if not results.exists():
+#         return JsonResponse("Book not found.", safe=False)
+#     return JsonResponse(list(results), safe=False)
