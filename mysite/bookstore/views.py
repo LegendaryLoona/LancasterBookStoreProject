@@ -186,3 +186,32 @@ def edit_book(request):
         book.description = new_description
     book.save()
     return JsonResponse("Book updated successfully", safe=False)
+
+def sort_alph(request):
+    list_book = Book.objects.all().values('id', 'name', 'author', 'price', 'edition', 'description')
+    if request.GET.get('order') == "desc":
+        sorted_data = sorted(list_book, key=lambda x: x["name"], reverse=True)
+    else:
+        sorted_data = sorted(list_book, key=lambda x: x["name"])
+    return JsonResponse(sorted_data, safe=False)
+
+def sort_price(request):
+    list_book = Book.objects.all().values('id', 'name', 'author', 'price', 'edition', 'description')
+    if request.GET.get('order') == "desc":
+        sorted_data = sorted(list_book, key=lambda x: x["price"], reverse=True)
+    else:
+        sorted_data = sorted(list_book, key=lambda x: x["price"])
+    return JsonResponse(sorted_data, safe=False)
+
+def search_books(request):
+    name = request.GET.get('name').lower()
+    books = Book.objects.all().values('id', 'name', 'author', 'price', 'edition', 'description')
+    exact_books = list(filter(lambda book: book['name'].lower() == name, books))
+    query_words = name.split()
+    partial_books = list(filter(
+        lambda book: all(word in book['name'].lower() for word in query_words) and book['name'].lower() != name,
+        books
+    ))
+    if not (exact_books or partial_books):
+        return JsonResponse("Nothing found.", safe=False)
+    return JsonResponse((exact_books + partial_books), safe=False)
