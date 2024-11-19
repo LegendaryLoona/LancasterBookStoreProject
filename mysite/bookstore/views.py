@@ -114,7 +114,8 @@ def delete_book(request):
             return JsonResponse("Book not found.", safe=False)
 
 def sort_alph(request):
-    list_book = Book.objects.all().values('id', 'name', 'author', 'price', 'edition', 'description')
+    list_book = Book.objects.all().prefetch_related('author').values('id', 'name', 'author__author_name','price','edition','description')
+    if not results.exists():
     if request.GET.get('order') == "desc":
         sorted_data = sorted(list_book, key=lambda x: x["name"], reverse=True)
     else:
@@ -122,7 +123,8 @@ def sort_alph(request):
     return JsonResponse(sorted_data, safe=False)
 
 def sort_price(request):
-    list_book = Book.objects.all().values('id', 'name', 'author', 'price', 'edition', 'description')
+    list_book = Book.objects.all().prefetch_related('author').values('id', 'name', 'author__author_name','price','edition','description')
+    if not results.exists():
     if request.GET.get('order') == "desc":
         sorted_data = sorted(list_book, key=lambda x: x["price"], reverse=True)
     else:
