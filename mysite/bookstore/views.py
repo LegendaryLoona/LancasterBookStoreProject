@@ -43,6 +43,7 @@ def edit_book(request):
     if new_description:
         book.description = new_description
     if new_author_name:
+        new_author_name, created = Author.objects.get_or_create(author_name=new_author_name)
         book.author.clear()
         book.author.add(new_author_name)
     book.save()
