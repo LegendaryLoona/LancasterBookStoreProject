@@ -48,13 +48,6 @@ def edit_book(request):
     book.save()
     return JsonResponse("Book updated successfully", safe=False)
 
-def library(request):
-    author_filter = request.GET.get('author')
-    list_book = Book.objects.all().values('id', 'name', 'author', 'price', 'edition', 'description')
-    if author_filter:
-        list_book = list_book.filter(author__icontains=author_filter)
-    return JsonResponse(list(list_book), safe=False)
-
 def addauthor(request):
     author_name = request.GET.get('name')
     author = Author.objects.filter(author_name=author_name)
