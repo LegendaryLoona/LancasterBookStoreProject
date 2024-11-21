@@ -11,7 +11,7 @@ def edit_author(request):
     if any(not c.isalnum() and c != " " for c in new_name):
         return JsonResponse("Please provide a valid name", safe=False)
     try:
-        author = Author.objects.get(name=current_name)
+        author = Author.objects.get(author_name=current_name)
     except Author.DoesNotExist:
         return JsonResponse("Author not found", safe=False)
     author.author_name = new_name
@@ -24,7 +24,7 @@ def edit_book(request):
     new_price = request.GET.get('price')
     new_edition = request.GET.get('edition')
     new_description = request.GET.get('description')
-    new_author_name = request.GET.get('author_name')
+    new_author_name = request.GET.get('author')
     
     try:
         int(book_id)
@@ -96,7 +96,7 @@ def delete_author(request):
     author_to_delete = Author.objects.filter(id=author_id)
     if author_to_delete.exists():
         author_to_delete.delete()
-        return JsonResponse( f"Book with ID {author_id} deleted successfully.", safe=False)
+        return JsonResponse( f"Author with ID {author_id} deleted successfully.", safe=False)
     else:
         return JsonResponse("author not found.", safe=False)
 
@@ -115,7 +115,6 @@ def delete_book(request):
 
 def sort_alph(request):
     list_book = Book.objects.all().prefetch_related('author').values('id', 'name', 'author__author_name','price','edition','description')
-    if not results.exists():
     if request.GET.get('order') == "desc":
         sorted_data = sorted(list_book, key=lambda x: x["name"], reverse=True)
     else:
@@ -124,7 +123,6 @@ def sort_alph(request):
 
 def sort_price(request):
     list_book = Book.objects.all().prefetch_related('author').values('id', 'name', 'author__author_name','price','edition','description')
-    if not results.exists():
     if request.GET.get('order') == "desc":
         sorted_data = sorted(list_book, key=lambda x: x["price"], reverse=True)
     else:
@@ -133,7 +131,10 @@ def sort_price(request):
 
 def search_book(request):
     book_name = request.GET.get('name')
-    words = book_name.split()
+    try:
+        words = book_name.split()
+    except:
+        words = ""
     query = Q()
     for word in words:
         query &= Q(name__icontains=word) 
@@ -144,7 +145,10 @@ def search_book(request):
 
 def search_author(request):
     authorname= request.GET.get("name")
-    words = authorname.split()
+    try:
+        words = authorname.split()
+    except:
+        words = ""
     query = Q()
     for word in words:
         query &= Q(author_name__icontains=word) 
@@ -154,7 +158,7 @@ def search_author(request):
         response_data.append({
             "author_id" :author.id,
             'author_name': author.author_name,
-            'books': author.list_of_books  
+            'books': author.list_of_books() 
         })
     return JsonResponse(response_data, safe=False)                       
         
