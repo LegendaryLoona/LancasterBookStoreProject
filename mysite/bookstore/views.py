@@ -29,11 +29,15 @@ def edit_book(request):
     try:
         int(book_id)
     except:
-        return JsonResponse("Please provide a book ID", safe=False)
+        return JsonResponse("Please provide a valid book ID", safe=False)
     try:
         book = Book.objects.get(id=book_id)
     except Book.DoesNotExist:
         return JsonResponse("Book not found", safe=False)
+    try:
+        float(new_price)
+    except:
+        return JsonResponse("Please provide a valid price", safe=False)
     if new_name:
         book.name = new_name
     if new_price:
@@ -43,9 +47,11 @@ def edit_book(request):
     if new_description:
         book.description = new_description
     if new_author_name:
-        new_author_name, created = Author.objects.get_or_create(author_name=new_author_name)
         book.author.clear()
-        book.author.add(new_author_name)
+        author_names = [name.strip() for name in new_author_name.split(",")]
+        for name in author_names:
+            new_author_name, created = Author.objects.get_or_create(author_name=name)
+            book.author.add(new_author_name)
     book.save()
     return JsonResponse("Book updated successfully", safe=False)
 
@@ -73,19 +79,22 @@ def addbook(request):
         return JsonResponse("Please provide a valid price", safe=False)
     if  not (book_name and author_name and book_price and book_edition and book_description):
         return JsonResponse("Please provide all of the attributes", safe=False)
-    author, created = Author.objects.get_or_create(author_name=author_name)
-    bookfilter= Book.objects.filter(author__author_name=author_name,name=book_name,price=book_price,edition=book_edition,description=book_description)
-    if bookfilter.exists():
-        return JsonResponse("Book already exists", safe=False)    
-    else:
-        book = Book.objects.create(
-            name=book_name,  
-            price=book_price,
-            edition=book_edition,
-            description=book_description
-            )
+    author_names = [name.strip() for name in author_name.split(",")]
+    existing_books = Book.objects.filter( name=book_name,price=book_price,edition=book_edition,description=book_description)
+    for book in existing_books:
+        existing_authors = set(book.author.values_list('author_name', flat=True))
+        if existing_authors == set(author_names):
+            return JsonResponse("Book already exists", safe=False)
+    book = Book.objects.create(
+        name=book_name,  
+        price=book_price,
+        edition=book_edition,
+        description=book_description
+        )
+    for name in author_names:
+        author, created = Author.objects.get_or_create(author_name=name)
         book.author.add(author)
-        return JsonResponse("Book added successfully", safe=False)
+    return JsonResponse("Book added successfully", safe=False)
     
 def delete_author(request):
     author_id = request.GET.get('id')
