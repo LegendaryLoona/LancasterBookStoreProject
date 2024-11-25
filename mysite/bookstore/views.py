@@ -1,6 +1,6 @@
 from .models import Book, Author
 from django.http import JsonResponse
-from django.db.models import Q
+from django.db.models import Q,Prefetch
 
 def edit_author(request):
     current_name = request.GET.get('current_name')
@@ -34,14 +34,14 @@ def edit_book(request):
         book = Book.objects.get(id=book_id)
     except Book.DoesNotExist:
         return JsonResponse("Book not found", safe=False)
-    try:
-        float(new_price)
-    except:
-        return JsonResponse("Please provide a valid price", safe=False)
     if new_name:
         book.name = new_name
     if new_price:
-            book.price = float(new_price)
+        try:
+            float(new_price)
+        except:
+            return JsonResponse("Please provide a valid price", safe=False)
+        book.price = float(new_price)
     if new_edition:
         book.edition = new_edition
     if new_description:
@@ -123,19 +123,25 @@ def delete_book(request):
             return JsonResponse("Book not found.", safe=False)
 
 def sort_alph(request):
-    list_book = Book.objects.all().prefetch_related('author').values('id', 'name', 'author__author_name','price','edition','description')
+    list_book = Book.objects.all().prefetch_related(Prefetch('author', to_attr='authors_list'))
+    data = []
+    for book in list_book:
+        data.append({'id': book.id,'name': book.name,'authors': [author.author_name for author in book.authors_list], 'price': book.price,'edition': book.edition,'description': book.description,})
     if request.GET.get('order') == "desc":
-        sorted_data = sorted(list_book, key=lambda x: x["name"], reverse=True)
+        sorted_data = sorted(data, key=lambda x: x["name"], reverse=True)
     else:
-        sorted_data = sorted(list_book, key=lambda x: x["name"])
+        sorted_data = sorted(data, key=lambda x: x["name"])
     return JsonResponse(sorted_data, safe=False)
 
 def sort_price(request):
-    list_book = Book.objects.all().prefetch_related('author').values('id', 'name', 'author__author_name','price','edition','description')
+    list_book = Book.objects.all().prefetch_related(Prefetch('author', to_attr='authors_list'))
+    data = []
+    for book in list_book:
+        data.append({'id': book.id,'name': book.name,'authors': [author.author_name for author in book.authors_list], 'price': book.price,'edition': book.edition,'description': book.description,})
     if request.GET.get('order') == "desc":
-        sorted_data = sorted(list_book, key=lambda x: x["price"], reverse=True)
+        sorted_data = sorted(data, key=lambda x: x["price"], reverse=True)
     else:
-        sorted_data = sorted(list_book, key=lambda x: x["price"])
+        sorted_data = sorted(data, key=lambda x: x["price"])
     return JsonResponse(sorted_data, safe=False)
 
 def search_book(request):
@@ -147,10 +153,13 @@ def search_book(request):
     query = Q()
     for word in words:
         query &= Q(name__icontains=word) 
-    results = Book.objects.filter(query).prefetch_related('author').values('id', 'name', 'author__author_name','price','edition','description')
-    if not results.exists():
+    books = Book.objects.filter(query).prefetch_related(Prefetch('author', to_attr='authors_list'))
+    if not books.exists():
         return JsonResponse("Book not found.", safe=False)
-    return JsonResponse(list(results), safe=False)
+    data = []
+    for book in books:
+        data.append({'id': book.id,'name': book.name,'authors': [author.author_name for author in book.authors_list], 'price': book.price,'edition': book.edition,'description': book.description,})
+    return JsonResponse(data, safe=False)
 
 def search_author(request):
     authorname= request.GET.get("name")
@@ -162,6 +171,8 @@ def search_author(request):
     for word in words:
         query &= Q(author_name__icontains=word) 
     results = Author.objects.filter(query)
+    if not results.exists():
+        return JsonResponse("author not found.", safe=False)
     response_data = []
     for author in results:
         response_data.append({
@@ -169,5 +180,4 @@ def search_author(request):
             'author_name': author.author_name,
             'books': author.list_of_books() 
         })
-    return JsonResponse(response_data, safe=False)                       
-        
+    return JsonResponse(response_data, safe=False)    
