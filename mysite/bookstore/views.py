@@ -188,26 +188,28 @@ def search_author(request):
 def add_books(request):
     if request.method == "GET":
         query = request.GET.getlist("query")  
-        total_books = int(request.GET.get("total_books", 10000))  
+        total_books = int(request.GET.get("total_books", 10))  
         api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM") 
         max_threads = int(request.GET.get("max_threads", 5)) 
         if not query:
-            return JsonResponse("error lack of query",safe=False)
+            return JsonResponse("error lack of query", safe=False)
         task_queue = Queue()
         max_results = 40 
         start_index = 0
         added_books = 0
+        lock = threading.Lock() 
         while start_index < total_books:
             task_queue.put(start_index)  
             start_index += max_results
-        def worker():    
+        def worker():
+            nonlocal added_books
             while not task_queue.empty():
                 start_index = task_queue.get()
                 url = "https://www.googleapis.com/books/v1/volumes"
                 fetched_books = 0
                 while fetched_books < total_books:
                     remaining_books = total_books - fetched_books
-                    current_max_results = min(max_results, remaining_books) 
+                    current_max_results = min(max_results, remaining_books)
                     params = {
                         "q": query,
                         "startIndex": start_index,
@@ -238,16 +240,17 @@ def add_books(request):
                                     book.author.add(author)
                                 if created:
                                     book.save()
-                                    added_books += 1
+                                    with lock: 
+                                        added_books += 1
                             fetched_books += len(items)
                             start_index += current_max_results
                             if len(items) < current_max_results:
-                                break 
+                                break
                         else:
-                            print("Failed to get data")
+                            print(f"Failed to get data for startIndex {start_index}")
                             break
                     except Exception as e:
-                        print(f"Error occurred: {e}")
+                        print(f"Error occurred for startIndex {start_index}: {e}")
                         break
                 task_queue.task_done()
         threads = []
