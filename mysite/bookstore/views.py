@@ -192,7 +192,7 @@ def add_books(request):
         api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM") 
         max_threads = int(request.GET.get("max_threads", 5)) 
         if not query_list:
-            return JsonResponse({"error lack of query"})
+            return JsonResponse("error lack of query",safe=False)
         task_queue = Queue()
         for query in query_list:
             task_queue.put(query) 
@@ -222,7 +222,6 @@ def add_books(request):
                             for item in items:
                                 volume_info = item.get("volumeInfo", {})
                                 sale_info = item.get("saleInfo", {})
-
                                 title = volume_info.get("title", "")
                                 authors = volume_info.get("authors", [])
                                 description = volume_info.get("description", "")
@@ -258,8 +257,5 @@ def add_books(request):
         task_queue.join()  
         for thread in threads:
             thread.join() 
-        return JsonResponse({
-            "status": "success",
-            "message": f"successful process {len(query_list)} keyword and add book",
-        })
-    return JsonResponse({"status": "error", "message": "noly support GET request"})
+        return JsonResponse("successful add book",safe=False)
+    return JsonResponse( "noly support GET request",safe=False)
