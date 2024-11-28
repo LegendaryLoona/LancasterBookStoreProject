@@ -263,32 +263,33 @@ def search_author(request):
 #             thread.join()
 #         return JsonResponse(f"Successfully added {added_books} books.", safe=False)
 #     return JsonResponse("Only GET requests are supported.", safe=False)
+
+     # use single thread
 def add_books(request):
-     # use single thread, it costs 5-6 seconds but when i want to add 100 books it actually add more than 100
     if request.method == "GET":
-        query = request.GET.get("query", "")  
-        total_books = int(request.GET.get("total_books", 100))  
-        api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM") 
+        query = request.GET.get("query", "")
+        total_books = int(request.GET.get("total_books", 100))  # 用户设置的书籍数量
+        api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM")
         if not query:
-            return JsonResponse("lack of query", safe=False)
+            return JsonResponse({"error": "Query parameter is required"}, safe=False)
         url = "https://www.googleapis.com/books/v1/volumes"
         max_results = 40  
         start_index = 0  
         fetched_books = 0  
-        added_books=0
-        if total_books<max_results:
-            max_results=total_books
+        added_books = 0 
         while fetched_books < total_books:
+            remaining_books = total_books - fetched_books  
+            current_max_results = min(max_results, remaining_books)  
             params = {
                 "q": query,
                 "startIndex": start_index,
-                "maxResults": max_results,
+                "maxResults": current_max_results,
                 "key": api_key,
-            }
+            }  
             response = requests.get(url, params=params)
             if response.status_code == 200:
                 data = response.json()
-                items = data.get("items", [])
+                items = data.get("items", [])             
                 for item in items:
                     volume_info = item.get("volumeInfo", {})
                     sale_info = item.get("saleInfo", {})
@@ -297,23 +298,24 @@ def add_books(request):
                     description = volume_info.get("description", "")
                     edition = volume_info.get("edition", "")
                     list_price = sale_info.get("listPrice", {}).get("amount", 0)
+                    
                     book, created = Book.objects.get_or_create(
                         name=title,
                         description=description,
                         price=list_price,
                         edition=edition,
-                    )
+                    )              
                     for author_name in authors:
                         author, _ = Author.objects.get_or_create(author_name=author_name)
-                        book.author.add(author)
+                        book.author.add(author)                  
                     if created:
                         book.save()
-                        added_books+=1
-                fetched_books += len(items)
-                start_index += max_results
-                if len(items) < max_results:
-                    break
+                        added_books += 1
+                fetched_books += len(items)  
+                start_index += current_max_results  
+                if len(items) < current_max_results:
+                    break  
             else:
-                return JsonResponse("can not access GOOGLE API", safe=False)
+                return JsonResponse("Failed to access Google Books API" , safe=False)
         return JsonResponse(f"Successfully added {added_books} books.", safe=False)
-    return JsonResponse("only support for GET")
+    return JsonResponse("Only GET requests are supported", safe=False)
