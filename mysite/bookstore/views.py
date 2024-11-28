@@ -187,31 +187,31 @@ def search_author(request):
 
 def add_books(request):
     if request.method == "GET":
-        query_list = request.GET.getlist("query")  
+        query = request.GET.getlist("query")  
         total_books = int(request.GET.get("total_books", 10000))  
         api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM") 
         max_threads = int(request.GET.get("max_threads", 5)) 
-        if not query_list:
+        if not query:
             return JsonResponse("error lack of query",safe=False)
         task_queue = Queue()
-        for query in query_list:
-            task_queue.put(query) 
-        def worker():
+        max_results = 40 
+        start_index = 0
+        added_books = 0
+        while start_index < total_books:
+            task_queue.put(start_index)  
+            start_index += max_results
+        def worker():    
             while not task_queue.empty():
-                query = task_queue.get()  
-                if query is None:
-                    break 
+                start_index = task_queue.get()
                 url = "https://www.googleapis.com/books/v1/volumes"
-                max_results = 40  
-                start_index = 0
                 fetched_books = 0
                 while fetched_books < total_books:
                     remaining_books = total_books - fetched_books
-                    current_max_results = min(max_results, remaining_books)  
+                    current_max_results = min(max_results, remaining_books) 
                     params = {
                         "q": query,
                         "startIndex": start_index,
-                        "maxResults": current_max_results, 
+                        "maxResults": current_max_results,
                         "key": api_key,
                     }
                     try:
@@ -238,24 +238,25 @@ def add_books(request):
                                     book.author.add(author)
                                 if created:
                                     book.save()
+                                    added_books += 1
                             fetched_books += len(items)
                             start_index += current_max_results
                             if len(items) < current_max_results:
-                                break  
+                                break 
                         else:
-                            print(f"failed,status: {response.status_code}, error_information: {response.text}")
+                            print("Failed to get data")
                             break
                     except Exception as e:
-                        print(f"error: {e}")
+                        print(f"Error occurred: {e}")
                         break
                 task_queue.task_done()
         threads = []
-        for _ in range(min(max_threads, task_queue.qsize())):
+        for _ in range(min(max_threads, task_queue.qsize())):  
             thread = threading.Thread(target=worker)
             thread.start()
             threads.append(thread)
-        task_queue.join()  
+        task_queue.join()
         for thread in threads:
-            thread.join() 
-        return JsonResponse("successful add book",safe=False)
-    return JsonResponse( "noly support GET request",safe=False)
+            thread.join()
+        return JsonResponse(f"Successfully added {added_books} books.", safe=False)
+    return JsonResponse("Only GET requests are supported.", safe=False)
