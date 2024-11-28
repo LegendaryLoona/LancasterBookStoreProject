@@ -1,6 +1,9 @@
 from .models import Book, Author
 from django.http import JsonResponse
 from django.db.models import Q,Prefetch
+import requests
+import threading
+from queue import Queue
 
 def edit_author(request):
     current_name = request.GET.get('current_name')
@@ -181,3 +184,82 @@ def search_author(request):
             'books': author.list_of_books() 
         })
     return JsonResponse(response_data, safe=False)    
+
+def add_books(request):
+    if request.method == "GET":
+        query_list = request.GET.getlist("query")  
+        total_books = int(request.GET.get("total_books", 10000))  
+        api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM") 
+        max_threads = int(request.GET.get("max_threads", 5)) 
+        if not query_list:
+            return JsonResponse({"error lack of query"})
+        task_queue = Queue()
+        for query in query_list:
+            task_queue.put(query) 
+        def worker():
+            while not task_queue.empty():
+                query = task_queue.get()  
+                if query is None:
+                    break 
+                url = "https://www.googleapis.com/books/v1/volumes"
+                max_results = 40  
+                start_index = 0
+                fetched_books = 0
+                while fetched_books < total_books:
+                    remaining_books = total_books - fetched_books
+                    current_max_results = min(max_results, remaining_books)  
+                    params = {
+                        "q": query,
+                        "startIndex": start_index,
+                        "maxResults": current_max_results, 
+                        "key": api_key,
+                    }
+                    try:
+                        response = requests.get(url, params=params)
+                        if response.status_code == 200:
+                            data = response.json()
+                            items = data.get("items", [])
+                            for item in items:
+                                volume_info = item.get("volumeInfo", {})
+                                sale_info = item.get("saleInfo", {})
+
+                                title = volume_info.get("title", "")
+                                authors = volume_info.get("authors", [])
+                                description = volume_info.get("description", "")
+                                edition = volume_info.get("edition", "")
+                                list_price = sale_info.get("listPrice", {}).get("amount", 0)
+                                book, created = Book.objects.get_or_create(
+                                    name=title,
+                                    description=description,
+                                    price=list_price,
+                                    edition=edition,
+                                )
+                                for author_name in authors:
+                                    author, _ = Author.objects.get_or_create(author_name=author_name)
+                                    book.author.add(author)
+                                if created:
+                                    book.save()
+                            fetched_books += len(items)
+                            start_index += current_max_results
+                            if len(items) < current_max_results:
+                                break  
+                        else:
+                            print(f"failed,status: {response.status_code}, error_information: {response.text}")
+                            break
+                    except Exception as e:
+                        print(f"error: {e}")
+                        break
+                task_queue.task_done()
+        threads = []
+        for _ in range(min(max_threads, task_queue.qsize())):
+            thread = threading.Thread(target=worker)
+            thread.start()
+            threads.append(thread)
+        task_queue.join()  
+        for thread in threads:
+            thread.join() 
+        return JsonResponse({
+            "status": "success",
+            "message": f"successful process {len(query_list)} keyword and add book",
+        })
+    return JsonResponse({"status": "error", "message": "noly support GET request"})
