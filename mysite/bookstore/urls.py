@@ -13,4 +13,6 @@ urlpatterns = [
     path('sortalph/', views.sort_alph, name='sample_json_view'),
     path('sortprice/', views.sort_price, name='sample_json_view'),
     path('add_books/', views.add_books, name='add_books'),
+    path('report/', views.generate_report, name='sample_json_view'),
+    path('change_price/', views.change_price, name='sample_json_view'),
     ]
