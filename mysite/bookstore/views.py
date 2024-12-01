@@ -113,17 +113,22 @@ def delete_author(request):
         return JsonResponse("author not found.", safe=False)
 
 def delete_book(request):
-        book_id = request.GET.get('id')
-        try:
-            int(book_id)
-        except ValueError:
-            return JsonResponse( "Invalid book ID.", safe=False)
-        books_to_delete = Book.objects.filter(id=book_id)
-        if books_to_delete.exists():
-            books_to_delete.delete()
-            return JsonResponse( f"Book with ID {book_id} deleted successfully.", safe=False)
-        else:
-            return JsonResponse("Book not found.", safe=False)
+    book_ids = request.GET.get('id')  # Get the comma-separated IDs from the query
+    if not book_ids:
+        return JsonResponse("No book IDs provided.", safe=False)
+
+    try:
+        book_ids = [int(book_id) for book_id in book_ids.split(',')]
+    except ValueError:
+        return JsonResponse("Invalid book IDs. All IDs must be integers.", safe=False)
+
+    books_to_delete = Book.objects.filter(id__in=book_ids)
+    if books_to_delete.exists():
+        deleted_count = books_to_delete.count()
+        books_to_delete.delete()
+        return JsonResponse(f"{deleted_count} book(s) deleted successfully.", safe=False)
+    else:
+        return JsonResponse("No books found for the provided IDs.", safe=False)
 
 def sort_alph(request):
     list_book = Book.objects.all().prefetch_related(Prefetch('author', to_attr='authors_list'))
@@ -336,3 +341,71 @@ def add_books(request):
         "skipped_books": skipped_books,
         "total_item":total_item,
     })
+
+
+
+def generate_report(request):
+    total_books = Book.objects.count()
+    average_price = Book.objects.aggregate(avg_price=Avg('price'))['avg_price']
+    total_authors = Author.objects.count()
+    books_per_author = (
+    Author.objects.annotate(num_books=Count('books'))
+    .aggregate(avg_books=Avg('num_books'))['avg_books'])
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="report.csv"'
+    writer = csv.writer(response)
+
+    writer.writerow(['Statistic', 'Value'])
+    writer.writerow(['Total Books', total_books])
+    writer.writerow(['Average Book Price', f"${average_price:.2f}" if average_price else "N/A"])
+    writer.writerow(['Total Authors', total_authors])
+    writer.writerow(['Average Books per Author', f"{books_per_author:.2f}" if books_per_author else "N/A"])
+    writer.writerow([])
+    writer.writerow(['Book Details'])
+    writer.writerow(['Name', 'Price', 'Authors', 'Edition', 'Description'])
+    for book in Book.objects.all():
+        authors = ", ".join(author.author_name for author in book.author.all())
+        writer.writerow([book.name, f"${book.price:.2f}", authors, book.edition, book.description])
+
+    writer.writerow([])
+    writer.writerow(['Author Details'])
+    writer.writerow(['Name', 'Number of Books'])
+    for author in Author.objects.all():
+        writer.writerow([author.author_name, author.books.count()])
+
+    return response
+
+
+def change_price(request):
+    current_price = request.GET.get('current_price')
+    new_price = request.GET.get('new_price')
+    lower_than = request.GET.get('lower_than')
+    higher_than = request.GET.get('higher_than')
+    if new_price:
+        try:
+            float(new_price)
+        except:
+            return JsonResponse("Please provide a valid price", safe=False)
+    if current_price:
+        try:
+            float(current_price)
+        except:
+            return JsonResponse("Please provide a valid price", safe=False)
+        books = Book.objects.filter(price = current_price)
+    if lower_than:
+        try:
+            float(lower_than)
+        except:
+            return JsonResponse("Please provide a valid price", safe=False)
+        books = Book.objects.filter(price__lt = lower_than)
+    if higher_than:
+        try:
+            float(higher_than)
+        except:
+            return JsonResponse("Please provide a valid price", safe=False)
+        books = Book.objects.filter(price__gt = higher_than)
+    books.update(price = new_price)
+    for book in books:
+        book.save()
+    return JsonResponse("Book updated successfully", safe=False)
