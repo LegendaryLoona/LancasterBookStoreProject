@@ -1,6 +1,9 @@
 from .models import Book, Author
 from django.http import JsonResponse
 from django.db.models import Q,Prefetch
+import requests
+import threading
+from queue import Queue
 
 def edit_author(request):
     current_name = request.GET.get('current_name')
@@ -181,3 +184,155 @@ def search_author(request):
             'books': author.list_of_books() 
         })
     return JsonResponse(response_data, safe=False)    
+
+# def add_books(request):
+#     if request.method == "GET":
+#         query = request.GET.getlist("query")  
+#         total_books = int(request.GET.get("total_books", 10))  
+#         api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM") 
+#         max_threads = int(request.GET.get("max_threads", 5)) 
+#         if not query:
+#             return JsonResponse("error lack of query", safe=False)
+#         task_queue = Queue()
+#         max_results = 40 
+#         start_index = 0
+#         added_books = 0
+#         lock = threading.Lock() 
+#         while start_index < total_books:
+#             task_queue.put(start_index)  
+#             start_index += max_results
+#         def worker():
+#             nonlocal added_books
+#             while not task_queue.empty():
+#                 start_index = task_queue.get()
+#                 url = "https://www.googleapis.com/books/v1/volumes"
+#                 fetched_books = 0
+#                 while fetched_books < total_books:
+#                     remaining_books = total_books - fetched_books
+#                     current_max_results = min(max_results, remaining_books)
+#                     params = {
+#                         "q": query,
+#                         "startIndex": start_index,
+#                         "maxResults": current_max_results,
+#                         "key": api_key,
+#                     }
+#                     try:
+#                         response = requests.get(url, params=params)
+#                         if response.status_code == 200:
+#                             data = response.json()
+#                             items = data.get("items", [])
+#                             for item in items:
+#                                 volume_info = item.get("volumeInfo", {})
+#                                 sale_info = item.get("saleInfo", {})
+#                                 title = volume_info.get("title", "")
+#                                 authors = volume_info.get("authors", [])
+#                                 description = volume_info.get("description", "")
+#                                 edition = volume_info.get("edition", "")
+#                                 list_price = sale_info.get("listPrice", {}).get("amount", 0)
+#                                 book, created = Book.objects.get_or_create(
+#                                     name=title,
+#                                     description=description,
+#                                     price=list_price,
+#                                     edition=edition,
+#                                 )
+#                                 for author_name in authors:
+#                                     author, _ = Author.objects.get_or_create(author_name=author_name)
+#                                     book.author.add(author)
+#                                 if created:
+#                                     book.save()
+#                                     with lock: 
+#                                         added_books += 1
+#                             fetched_books += len(items)
+#                             start_index += current_max_results
+#                             if len(items) < current_max_results:
+#                                 break
+#                         else:
+#                             print(f"Failed to get data for startIndex {start_index}")
+#                             break
+#                     except Exception as e:
+#                         print(f"Error occurred for startIndex {start_index}: {e}")
+#                         break
+#                 task_queue.task_done()
+#         threads = []
+#         for _ in range(min(max_threads, task_queue.qsize())):  
+#             thread = threading.Thread(target=worker)
+#             thread.start()
+#             threads.append(thread)
+#         task_queue.join()
+#         for thread in threads:
+#             thread.join()
+#         return JsonResponse(f"Successfully added {added_books} books.", safe=False)
+#     return JsonResponse("Only GET requests are supported.", safe=False)
+
+     # use single thread
+def add_books(request):
+    if request.method != "GET":
+        return JsonResponse("Only GET requests are supported", safe=False)
+    query = request.GET.get("query", "")
+    total_books = int(request.GET.get("total_books", 2000))
+    api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM")
+    if not query:
+        return JsonResponse( "Query parameter is required", safe=False)
+    url = "https://www.googleapis.com/books/v1/volumes"
+    max_results = 40
+    start_index = 0
+    fetched_books = 0
+    added_books = 0
+    skipped_books = 0
+    while added_books < total_books:
+        remaining_books = total_books - added_books
+        current_max_results = min(max_results, remaining_books)
+        params = {
+            "q": query,
+            "startIndex": start_index,
+            "maxResults": current_max_results,
+            "key": api_key,
+        }
+        response = requests.get(url, params=params)
+        if response.status_code != 200:
+            return JsonResponse("Failed to access Google Books API", safe=False)
+        data = response.json()
+        items = data.get("items", [])
+        if not items:
+            break  
+        total_item = data.get("totalItems")
+        for item in items:
+            volume_info = item.get("volumeInfo", {})
+            sale_info = item.get("saleInfo", {})
+            title = volume_info.get("title", "")
+            authors = volume_info.get("authors", [])
+            description = volume_info.get("description", "")
+            edition = volume_info.get("edition", "")
+            list_price = sale_info.get("listPrice", {}).get("amount", 0)
+            bid = item.get("id", "")  
+            if not title or not bid:
+                skipped_books += 1
+                continue  
+            book, created = Book.objects.get_or_create(
+                bid=bid,  
+                defaults={
+                    "name": title,
+                    "description": description,
+                    "price": list_price,
+                    "edition": edition,
+                }
+            )
+            for author_name in authors:
+                author, _ = Author.objects.get_or_create(author_name=author_name)
+                book.author.add(author)
+            if created:
+                book.save()
+                added_books += 1
+            else:
+                skipped_books += 1
+        fetched_books += len(items)
+        start_index += current_max_results
+        if len(items) < current_max_results:
+            break  
+    return JsonResponse({
+        "message": f"Successfully added {added_books} books.",
+        "fetched_books": fetched_books,
+        "added_books": added_books,
+        "skipped_books": skipped_books,
+        "total_item":total_item,
+    })

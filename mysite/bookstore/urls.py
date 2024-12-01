@@ -12,4 +12,5 @@ urlpatterns = [
     path('edit_author/', views.edit_author, name='edit_author'),
     path('sortalph/', views.sort_alph, name='sample_json_view'),
     path('sortprice/', views.sort_price, name='sample_json_view'),
+    path('add_books/', views.add_books, name='add_books'),
     ]
