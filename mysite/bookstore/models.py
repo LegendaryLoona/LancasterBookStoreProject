@@ -11,6 +11,7 @@ class Author(models.Model):
 
 class Book(models.Model):
     name = models.CharField(max_length=50, default=None)
+    bid = models.CharField(max_length=255, unique=True, blank=True, null=True)
     # author = models.CharField(max_length=50, default=None)
     # author = models.ForeignKey(Author, related_name='books', on_delete=models.CASCADE)
     author = models.ManyToManyField(Author, related_name='books')
