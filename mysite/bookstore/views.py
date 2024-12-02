@@ -4,6 +4,7 @@ from django.db.models import Q,Prefetch
 import requests
 import threading
 from queue import Queue
+import time
 
 def edit_author(request):
     current_name = request.GET.get('current_name')
@@ -268,8 +269,9 @@ def search_author(request):
 def add_books(request):
     if request.method != "GET":
         return JsonResponse("Only GET requests are supported", safe=False)
+    start_time=time.time()
     query = request.GET.get("query", "")
-    total_books = int(request.GET.get("total_books", 2000))
+    total_books = int(request.GET.get("total_books", 900))
     api_key = request.GET.get("api_key", "AIzaSyCeEdkjt8iezx-EtUTeeQqnERpgems1UHM")
     if not query:
         return JsonResponse( "Query parameter is required", safe=False)
@@ -295,7 +297,6 @@ def add_books(request):
         items = data.get("items", [])
         if not items:
             break  
-        total_item = data.get("totalItems")
         for item in items:
             volume_info = item.get("volumeInfo", {})
             sale_info = item.get("saleInfo", {})
@@ -327,6 +328,7 @@ def add_books(request):
                 skipped_books += 1
         fetched_books += len(items)
         start_index += current_max_results
+        time.sleep(0.1)
         if len(items) < current_max_results:
             break  
     return JsonResponse({
@@ -334,5 +336,5 @@ def add_books(request):
         "fetched_books": fetched_books,
         "added_books": added_books,
         "skipped_books": skipped_books,
-        "total_item":total_item,
+        "total_time":time.time()-start_time
     })
