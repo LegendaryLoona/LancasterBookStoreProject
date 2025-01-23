@@ -10,7 +10,7 @@ This repository contains a Django-based web application designed as a project fo
 * Jalal Mammadov
 
 ## Requirements
-* Django[https://www.djangoproject.com/download/]
+* [Django](https://www.djangoproject.com/download/)
 
 ## The Book Store application includes the following core features:
 
