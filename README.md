@@ -9,6 +9,9 @@ This repository contains a Django-based web application designed as a project fo
 * Ruochen Liao
 * Jalal Mammadov
 
+## Requirements
+* Django[https://www.djangoproject.com/download/]
+
 ## The Book Store application includes the following core features:
 
 - Displaying the Library
