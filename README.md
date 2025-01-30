@@ -30,12 +30,12 @@ This repository contains a Django-based web application designed as a project fo
 
 ### Use Case UML
 
-![](https://github.com/LegendaryLoona/LancasterPMP/blob/main/Use%20Case%20Diagram.drawio.png)
+![](https://github.com/LegendaryLoona/LancasterPMP/blob/main/UMLs/Use%20Case%20Diagram.drawio.png)
 
 ### Class UML
 
-![](https://github.com/LegendaryLoona/LancasterPMP/blob/main/Class%20Diagram.drawio.png)
+![](https://github.com/LegendaryLoona/LancasterPMP/blob/main/UMLs/Class%20Diagram.drawio.png)
 
 ### Sequence UML
 
-![](https://github.com/LegendaryLoona/LancasterPMP/blob/main/Sequence%20Diagram.drawio.png)
+![](https://github.com/LegendaryLoona/LancasterPMP/blob/main/UMLs/Sequence%20Diagram.drawio.png)
