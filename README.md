@@ -12,6 +12,14 @@ This repository contains a Django-based web application designed as a project fo
 ## Requirements
 * [Django](https://www.djangoproject.com/download/)
 
+
+## Running the code
+To run the code run the following commands
+
+* python manage.py makemigrations
+* python manage.py migrate
+* python manage.py runserver
+
 ## The Book Store application includes the following core features:
 
 - Displaying the Library
